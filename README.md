@@ -21,7 +21,7 @@ Ver saldo
 Editar data de 3 transações para d -2 (2 dias atrás)
 Ver saldo da conta 2 dias atrás
 
-## Modelo dos dados
+## Base de Modelo dos dados (fiz algumas alterações que achei pertinente)
 User {
 _id: objectId | string
 cpf: string // único
@@ -35,3 +35,10 @@ amount: number
 date: Date
 userId: ObjectId | string
 }
+
+
+# Como rodar o projeto:
+- Copiar o example.env para .env
+- Preencher com as credenciais configuradas no seu ambiente local (conexão com o mongo-db/porta que a aplicação vai rodar)
+- npm install
+- npm run dev

@@ -48,14 +48,14 @@ export class TransactionService {
     async getBalanceByUserByDate(userId: string, date: Date): Promise<number> {
         const transactions = await TransactionModel.find({
             userId,
-            createdAt: { $lte: date }
+            date: { $lte: date }
         }).exec();
         const receivedTransfers = await TransactionModel.find({
             destinationUserId: userId,
             transactionType: {
                 $in: [TransactionType.TRANSFER, TransactionType.REVERSAL_TRANSFER]
             },
-            createdAt: { $lte: date }
+            date: { $lte: date }
             }).exec();
         return this.calculateBalance(transactions, receivedTransfers);
     }
