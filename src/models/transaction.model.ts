@@ -7,6 +7,7 @@ export interface ITransaction extends Document {
     date: Date;
     userId: Types.ObjectId;
     destinationUserId?: Types.ObjectId;
+    originalTransactionId?: Types.ObjectId;
 }
 
 const transactionSchema = new Schema<ITransaction>({
@@ -15,6 +16,7 @@ const transactionSchema = new Schema<ITransaction>({
         date: { type: Date, required: true },
         userId: { type: Schema.Types.ObjectId, required: true },
         destinationUserId: { type: Schema.Types.ObjectId, required: false },
+        originalTransactionId: { type: Schema.Types.ObjectId, required: false },
     },
     { timestamps: { createdAt: true, updatedAt: false } },
 );

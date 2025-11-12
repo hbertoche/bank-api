@@ -2,9 +2,11 @@
   "name": "bank-api",
   "version": "1.0.0",
   "description": "Projeto para o desafio da Velotax para criar uma API em Express com TS, com um crud de usuario/transações financeiras. Basicamente um mini banco sem transações p2p (apenas depósito/saque/leitura)",
-  "main": "index.js",
+  "main": "dist/server.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
   },
   "keywords": [],
   "author": "",

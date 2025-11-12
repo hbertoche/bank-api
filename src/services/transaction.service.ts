@@ -3,15 +3,26 @@ import { ITransaction, TransactionModel } from "../models/transaction.model";
 
 export class TransactionService {
     private calculateBalance(transactions: ITransaction[], receivedTransfers: ITransaction[]): number {
-        let balance = receivedTransfers.reduce((acc, transaction) => acc + transaction.amount, 0);
-        balance += transactions.reduce((acc, transaction) => {
-            if (transaction.transactionType === TransactionType.DEPOSIT) {
-                return acc + transaction.amount;
-            } else {
-                return acc - transaction.amount;
+        const receivedBalance = receivedTransfers.reduce((total, transaction) => {
+            if (transaction.transactionType === TransactionType.REVERSAL_TRANSFER) {
+                return total - transaction.amount;
+            }
+            return total + transaction.amount;
+        }, 0);
+        const transactionBalance = transactions.reduce((total, transaction) => {
+            switch (transaction.transactionType) {
+                case TransactionType.DEPOSIT:
+                case TransactionType.REVERSAL_WITHDRAWAL:
+                case TransactionType.REVERSAL_TRANSFER:
+                    return total + transaction.amount;
+                case TransactionType.WITHDRAWAL:
+                case TransactionType.REVERSAL_DEPOSIT:
+                case TransactionType.TRANSFER:
+                    return total - transaction.amount;
             }
         }, 0);
-        return balance;
+
+        return receivedBalance + transactionBalance;
     }
 
     async createTransaction(transaction: ITransaction): Promise<ITransaction> {
@@ -29,8 +40,9 @@ export class TransactionService {
 
     async getBalanceByUser(userId: string): Promise<number> {
         const transactions = await TransactionModel.find({ userId }).exec();
-        const receivedTransfers = await TransactionModel.find({ destinationUserId: userId, transactionType: TransactionType.TRANSFER }).exec();
-        return this.calculateBalance(transactions, receivedTransfers);
+        const receivedTransactions = await TransactionModel.find({ destinationUserId: userId,
+             transactionType: { $in: [TransactionType.TRANSFER, TransactionType.REVERSAL_TRANSFER] } }).exec();
+        return this.calculateBalance(transactions, receivedTransactions);
     }
 
     async getBalanceByUserByDate(userId: string, date: Date): Promise<number> {
@@ -40,9 +52,11 @@ export class TransactionService {
         }).exec();
         const receivedTransfers = await TransactionModel.find({
             destinationUserId: userId,
-            transactionType: TransactionType.TRANSFER,
+            transactionType: {
+                $in: [TransactionType.TRANSFER, TransactionType.REVERSAL_TRANSFER]
+            },
             createdAt: { $lte: date }
-        }).exec();
+            }).exec();
         return this.calculateBalance(transactions, receivedTransfers);
     }
 
@@ -52,12 +66,52 @@ export class TransactionService {
         return transactions.concat(receivedTransfers).sort((a, b) => a.date.getTime() - b.date.getTime());
     }
 
-    async updateAdvanceTransaction(transactionId: string, advanceAmount: number): Promise<ITransaction | null> {
-        return TransactionModel.findByIdAndUpdate(
-            transactionId,
-            { advanceAmount },
-            { new: true }
-        ).exec();
+    async updateAdvanceTransaction(transactionId: string, newDate: Date): Promise<ITransaction | null> {
+        const originalTransaction = await TransactionModel.findById(transactionId).exec();
+        if (!originalTransaction) {
+            throw new Error('Transaction not found');
+        }
+
+        if (originalTransaction.date >= newDate) {
+            throw new Error('New date must be before the original date');
+        }
+
+        let reversalType: TransactionType;
+        switch (originalTransaction.transactionType) {
+            case TransactionType.DEPOSIT:
+                reversalType = TransactionType.REVERSAL_DEPOSIT;
+                break;
+            case TransactionType.WITHDRAWAL:
+                reversalType = TransactionType.REVERSAL_WITHDRAWAL;
+                break;
+            case TransactionType.TRANSFER:
+                reversalType = TransactionType.REVERSAL_TRANSFER;
+                break;
+            default:
+                throw new Error('Only DEPOSIT, WITHDRAWAL and TRANSFER can be advanced');
+        }
+
+        const reversalTransaction = new TransactionModel({
+            userId: originalTransaction.userId,
+            destinationUserId: originalTransaction.destinationUserId,
+            originalTransactionId: originalTransaction._id,
+            transactionType: reversalType,
+            amount: originalTransaction.amount,
+            date: originalTransaction.date,
+        });
+        await reversalTransaction.save();
+
+        const newTransaction = new TransactionModel({
+            userId: originalTransaction.userId,
+            destinationUserId: originalTransaction.destinationUserId,
+            originalTransactionId: originalTransaction._id,
+            transactionType: originalTransaction.transactionType,
+            amount: originalTransaction.amount,
+            date: newDate,
+        });
+        await newTransaction.save();
+
+        return newTransaction;
     }
 
 }
