@@ -1,22 +1,33 @@
 import { IUser, UserModel } from "../../src/models/user.model";
 
-// Mock completo do Mongoose UserModel
+jest.mock('../../src/models/user.model');
+
 export const userMock: IUser = {
     cpf: '12345678900',
     name: 'Hugo',
     email: 'hugo@test.com'
 } as IUser;
 
-export const UserModelMock = {
-    findOne: jest.fn(),
-    findById: jest.fn(),
-    find: jest.fn(),
-    findByIdAndUpdate: jest.fn(),
-    findByIdAndDelete: jest.fn(),
-    save: jest.fn(),
+const mockSave = jest.fn();
+const mockFindOne = jest.fn();
+const mockFindById = jest.fn();
+const mockFindByIdAndUpdate = jest.fn();
+const mockFindByIdAndDelete = jest.fn();
+
+export const setupUserModelMock = () => {
+    (UserModel as any).mockImplementation((data: any) => ({
+        save: mockSave
+    }));
+    (UserModel.findOne as jest.Mock) = mockFindOne;
+    (UserModel.findById as jest.Mock) = mockFindById;
+    (UserModel.findByIdAndUpdate as jest.Mock) = mockFindByIdAndUpdate;
+    (UserModel.findByIdAndDelete as jest.Mock) = mockFindByIdAndDelete;
 };
 
-// Função para resetar mocks entre testes
-export const resetUserMocks = () => {
-    Object.values(UserModelMock).forEach(fn => fn.mockReset());
+export const UserModelMock = {
+    save: mockSave,
+    findOne: mockFindOne,
+    findById: mockFindById,
+    findByIdAndUpdate: mockFindByIdAndUpdate,
+    findByIdAndDelete: mockFindByIdAndDelete,
 };
