@@ -71,11 +71,7 @@ export class TransactionService {
         if (!originalTransaction) {
             throw new Error('Transaction not found');
         }
-
-        if (originalTransaction.date >= newDate) {
-            throw new Error('New date must be before the original date');
-        }
-
+        
         let reversalType: TransactionType;
         switch (originalTransaction.transactionType) {
             case TransactionType.DEPOSIT:
